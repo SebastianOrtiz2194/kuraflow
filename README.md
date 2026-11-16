@@ -6,7 +6,7 @@
 
 A microservices-based language learning platform for **English (CEFR A1–C2)** and **Japanese (JLPT N5–N1)** learners. Features an SM-2 spaced repetition engine, gamified XP/streak/badge systems, real-time leaderboards, a rich lesson player with Japanese furigana & pitch-accent support, and a PWA frontend with offline caching and web push notifications.
 
-[![CI](https://img.shields.io/badge/CI-GitHub%20Actions-2088FF?style=flat-square&logo=githubactions&logoColor=white)](.github/workflows/ci.yml)
+[![CI](https://github.com/SebastianOrtiz2194/kuraflow/actions/workflows/ci.yml/badge.svg)](https://github.com/SebastianOrtiz2194/kuraflow/actions/workflows/ci.yml)
 [![Java](https://img.shields.io/badge/Java-21-ED8B00?style=flat-square&logo=openjdk&logoColor=white)](https://adoptium.net/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.4-6DB33F?style=flat-square&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
 [![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=next.js&logoColor=white)](https://nextjs.org/)
