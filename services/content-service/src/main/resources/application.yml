@@ -30,7 +30,7 @@ server:
   port: 8083
 
 jwt:
-  secret: ${JWT_SECRET:defaultSecretKeyForDevelopmentShouldBe32CharsLong!}
+  secret: ${JWT_SECRET:}
 
 springdoc:
   api-docs:
@@ -41,3 +41,7 @@ springdoc:
 kuraflow:
   seed:
     enabled: true
+  security:
+    # The learning catalogue is public; everything else needs an access token.
+    public-paths:
+      - /api/content/**

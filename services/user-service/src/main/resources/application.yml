@@ -41,7 +41,14 @@ spring:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
-        spring.json.trusted.packages: "*"
+        # Only deserialize our own event classes (a wildcard lets a producer pick any class on the classpath).
+        spring.json.trusted.packages: "com.kuraflow.shared.event"
+
+kuraflow:
+  security:
+    # Service-to-service endpoints used by gamification-service; the gateway doesn't route them.
+    public-paths:
+      - /api/system/**
 
 management:
   health:
@@ -52,7 +59,7 @@ server:
   port: 8082
 
 jwt:
-  secret: ${JWT_SECRET:defaultSecretKeyForDevelopmentShouldBe32CharsLong!}
+  secret: ${JWT_SECRET:}
 
 vapid:
   public.key: ${VAPID_PUBLIC_KEY:BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSPOSnfMSCDBMSDh01Cxyz123}
