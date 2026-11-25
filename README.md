@@ -413,9 +413,12 @@ cd services
 ./mvnw clean install -DskipTests
 ```
 
-Open a **separate terminal** for each service (run from inside `services/`):
+Open a **separate terminal** for each service (run from inside `services/`). Each service reads `JWT_SECRET` and the database settings from the environment, so load your `.env` in every terminal first:
 
 ```bash
+set -a; source ../.env; set +a
+
+
 # Terminal 1 — Auth Service (port 8081)
 cd auth-service && ../mvnw spring-boot:run
 
@@ -504,7 +507,7 @@ Create a `.env` file in the project root based on `.env.example`:
 | `DB_URL` | Yes | JDBC connection string (e.g. `jdbc:postgresql://localhost:5432/KuraFlow`) |
 | `DB_USERNAME` | Yes | PostgreSQL username |
 | `DB_PASSWORD` | Yes | PostgreSQL password |
-| `JWT_SECRET` | Yes | HMAC-SHA secret key for JWT signing/verification |
+| `JWT_SECRET` | Yes | HMAC secret for signing/verifying JWTs, shared by all services. At least 32 bytes (`openssl rand -base64 48`); services refuse to start without it |
 | `MAIL_PASSWORD` | No | SMTP password for email reminders (dev: MailHog) |
 | `VAPID_PUBLIC_KEY` | No | VAPID public key for web push notifications |
 | `VAPID_PRIVATE_KEY` | No | VAPID private key for web push notifications |
