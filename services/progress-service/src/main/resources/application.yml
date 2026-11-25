@@ -37,7 +37,7 @@ app:
       review-completed: review.completed
 
 jwt:
-  secret: ${JWT_SECRET:defaultSecretKeyForDevelopmentShouldBe32CharsLong!}
+  secret: ${JWT_SECRET:}
 
 springdoc:
   api-docs:
