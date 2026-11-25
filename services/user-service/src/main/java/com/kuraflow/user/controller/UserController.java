@@ -1,5 +1,7 @@
 package com.kuraflow.user.controller;
 
+import com.kuraflow.shared.security.CustomUserDetails;
+import com.kuraflow.user.dto.PublicUserProfileResponse;
 import com.kuraflow.user.dto.UpdateProfileRequest;
 import com.kuraflow.user.dto.UserBriefResponse;
 import com.kuraflow.user.dto.UserProfileResponse;
@@ -9,11 +11,16 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Profile endpoints. A user can only read or change their own private profile ({@code /me});
+ * other users' profiles are public views without email or account details.
+ */
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
@@ -29,37 +36,23 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Get user profile by ID")
-    public ResponseEntity<UserProfileResponse> getProfile(@PathVariable UUID id) {
-        return ResponseEntity.ok(userService.getProfile(id));
+    @Operation(summary = "Get another user's public profile (no email or account details)")
+    public ResponseEntity<PublicUserProfileResponse> getPublicProfile(@PathVariable UUID id) {
+        return ResponseEntity.ok(userService.getPublicProfile(id));
     }
 
     @GetMapping("/me")
     @Operation(summary = "Get current authenticated user's profile")
-    public ResponseEntity<UserProfileResponse> getMyProfile(@org.springframework.security.core.annotation.AuthenticationPrincipal com.kuraflow.shared.security.CustomUserDetails userDetails) {
-        return ResponseEntity.ok(userService.getProfile(userDetails.getId()));
-    }
-
-    @GetMapping("/email/{email}")
-    @Operation(summary = "Get user profile by email")
-    public ResponseEntity<UserProfileResponse> getProfileByEmail(@PathVariable String email) {
-        return ResponseEntity.ok(userService.getProfileByEmail(email));
-    }
-
-    @PatchMapping("/{id}")
-    @Operation(summary = "Update user profile")
-    public ResponseEntity<UserProfileResponse> updateProfile(
-            @PathVariable UUID id,
-            @Valid @RequestBody UpdateProfileRequest request) {
-        return ResponseEntity.ok(userService.updateProfile(id, request));
+    public ResponseEntity<UserProfileResponse> getMyProfile(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(userService.getOwnProfile(userDetails.getId(), userDetails.getEmail()));
     }
 
     @PatchMapping("/me")
     @Operation(summary = "Update current authenticated user's profile")
     public ResponseEntity<UserProfileResponse> updateMyProfile(
-            @org.springframework.security.core.annotation.AuthenticationPrincipal com.kuraflow.shared.security.CustomUserDetails userDetails,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @Valid @RequestBody UpdateProfileRequest request) {
-        return ResponseEntity.ok(userService.updateProfile(userDetails.getId(), request));
+        return ResponseEntity.ok(userService.updateProfile(userDetails.getId(), userDetails.getEmail(), request));
     }
 
     @GetMapping("/health")
@@ -71,7 +64,7 @@ public class UserController {
     @PostMapping("/me/following/{targetId}")
     @Operation(summary = "Follow a user")
     public ResponseEntity<Void> followUser(
-            @org.springframework.security.core.annotation.AuthenticationPrincipal com.kuraflow.shared.security.CustomUserDetails userDetails,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable UUID targetId) {
         userService.followUser(userDetails.getId(), targetId);
         return ResponseEntity.ok().build();
@@ -80,7 +73,7 @@ public class UserController {
     @DeleteMapping("/me/following/{targetId}")
     @Operation(summary = "Unfollow a user")
     public ResponseEntity<Void> unfollowUser(
-            @org.springframework.security.core.annotation.AuthenticationPrincipal com.kuraflow.shared.security.CustomUserDetails userDetails,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable UUID targetId) {
         userService.unfollowUser(userDetails.getId(), targetId);
         return ResponseEntity.ok().build();
@@ -88,13 +81,13 @@ public class UserController {
 
     @GetMapping("/{id}/following")
     @Operation(summary = "Get list of user IDs that this user is following")
-    public ResponseEntity<java.util.List<UUID>> getFollowingIds(@PathVariable UUID id) {
+    public ResponseEntity<List<UUID>> getFollowingIds(@PathVariable UUID id) {
         return ResponseEntity.ok(userService.getFollowingIds(id));
     }
 
     @GetMapping("/{id}/followers")
     @Operation(summary = "Get list of user IDs that follow this user")
-    public ResponseEntity<java.util.List<UUID>> getFollowersIds(@PathVariable UUID id) {
+    public ResponseEntity<List<UUID>> getFollowersIds(@PathVariable UUID id) {
         return ResponseEntity.ok(userService.getFollowerIds(id));
     }
 }

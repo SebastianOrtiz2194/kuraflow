@@ -29,20 +29,17 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
                     return onError(exchange, "Missing authorization header", HttpStatus.UNAUTHORIZED);
                 }
 
-                String authHeader = exchange.getRequest().getHeaders().get(HttpHeaders.AUTHORIZATION).get(0);
-                if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                    authHeader = authHeader.substring(7);
+                String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
+                if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                    return onError(exchange, "Missing bearer token", HttpStatus.UNAUTHORIZED);
                 }
 
                 try {
-                    jwtUtil.validateToken(authHeader);
-                    
-                    // Optionally string the username and pass it along in a custom header
-                    String username = jwtUtil.extractUsername(authHeader);
+                    String username = jwtUtil.validateAccessToken(authHeader.substring(7)).getSubject();
                     org.springframework.http.server.reactive.ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
                             .header("X-Auth-User", username)
                             .build();
-                    
+
                     exchange = exchange.mutate().request(mutatedRequest).build();
 
                 } catch (Exception e) {

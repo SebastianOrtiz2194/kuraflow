@@ -345,7 +345,8 @@ KuraFlow/
 │   ├── Dockerfile                 # Multi-stage build (node:22-alpine, standalone output)
 │   └── package.json
 ├── services/                       # Spring Boot 3 microservices (Java 21, Maven)
-│   ├── pom.xml                     # Parent POM (shared dependency management)
+│   ├── mvnw, mvnw.cmd              # Maven Wrapper (pins Maven 3.9.16)
+│   ├── pom.xml                     # Parent POM (shared dependency management, JDK 21 enforcer)
 │   ├── shared-lib/                 # Shared: JWT security filter, CustomUserDetails, Kafka event DTOs
 │   ├── auth-service/               # Port 8081 — Auth, JWT, OAuth2
 │   ├── user-service/               # Port 8082 — Profiles, follows, push, email
@@ -369,8 +370,8 @@ KuraFlow/
 | Tool | Version | Purpose |
 |------|---------|---------|
 | [Docker](https://www.docker.com/) | Latest | Run infrastructure containers |
-| [Java (JDK)](https://adoptium.net/) | 21+ | Build & run Spring Boot services |
-| [Maven](https://maven.apache.org/) | 3.9+ | Backend build tool |
+| [Java (JDK)](https://adoptium.net/) | 21 | Build & run Spring Boot services. Pinned in `.sdkmanrc`; the build rejects other versions |
+| Maven | — | Not needed: use the wrapper `services/mvnw`, which downloads Maven 3.9.16 on first run |
 | [Node.js](https://nodejs.org/) | 20+ | Frontend runtime |
 | [npm](https://www.npmjs.com/) | 10+ | Frontend package manager |
 
@@ -405,33 +406,36 @@ docker compose -f infra/docker-compose.yml ps
 
 ### 4. Build & Start Backend Microservices
 
-Build the shared library and all services:
+Build the shared library and all services with JDK 21 (SDKMAN users: run `sdk env` in the repository root first):
 
 ```bash
 cd services
-mvn clean install -DskipTests
+./mvnw clean install -DskipTests
 ```
 
-Open a **separate terminal** for each service (run from inside `services/`):
+Open a **separate terminal** for each service (run from inside `services/`). Each service reads `JWT_SECRET` and the database settings from the environment, so load your `.env` in every terminal first:
 
 ```bash
+set -a; source ../.env; set +a
+
+
 # Terminal 1 — Auth Service (port 8081)
-cd auth-service && mvn spring-boot:run
+cd auth-service && ../mvnw spring-boot:run
 
 # Terminal 2 — User Service (port 8082)
-cd user-service && mvn spring-boot:run
+cd user-service && ../mvnw spring-boot:run
 
 # Terminal 3 — Content Service (port 8083)
-cd content-service && mvn spring-boot:run
+cd content-service && ../mvnw spring-boot:run
 
 # Terminal 4 — Progress Service (port 8084)
-cd progress-service && mvn spring-boot:run
+cd progress-service && ../mvnw spring-boot:run
 
 # Terminal 5 — Gamification Service (port 8085)
-cd gamification-service && mvn spring-boot:run
+cd gamification-service && ../mvnw spring-boot:run
 
 # Terminal 6 — API Gateway (port 8080) — start this LAST
-cd gateway-service && mvn spring-boot:run
+cd gateway-service && ../mvnw spring-boot:run
 ```
 
 > Wait until each service logs `Started [ServiceName]Application` before starting the next. The content-service will auto-seed lesson and flashcard data on first startup.
@@ -503,7 +507,7 @@ Create a `.env` file in the project root based on `.env.example`:
 | `DB_URL` | Yes | JDBC connection string (e.g. `jdbc:postgresql://localhost:5432/KuraFlow`) |
 | `DB_USERNAME` | Yes | PostgreSQL username |
 | `DB_PASSWORD` | Yes | PostgreSQL password |
-| `JWT_SECRET` | Yes | HMAC-SHA secret key for JWT signing/verification |
+| `JWT_SECRET` | Yes | HMAC secret for signing/verifying JWTs, shared by all services. At least 32 bytes (`openssl rand -base64 48`); services refuse to start without it |
 | `MAIL_PASSWORD` | No | SMTP password for email reminders (dev: MailHog) |
 | `VAPID_PUBLIC_KEY` | No | VAPID public key for web push notifications |
 | `VAPID_PRIVATE_KEY` | No | VAPID private key for web push notifications |
@@ -520,7 +524,7 @@ The [GitHub Actions workflow](.github/workflows/ci.yml) runs on every push and p
 | Job | Runner | Steps |
 |-----|--------|-------|
 | **frontend-ci** | `ubuntu-latest`, Node 20 | `npm ci` → `npm run lint` → `npm run build` |
-| **backend-ci** | `ubuntu-latest`, Java 21 (Temurin) | `mvn -B verify` (compilation + unit tests + Testcontainers integration tests) |
+| **backend-ci** | `ubuntu-latest`, Java 21 (Temurin) | `./mvnw -B verify` (toolchain check, compilation, unit tests) |
 
 ---
 

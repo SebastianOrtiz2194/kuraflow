@@ -2,6 +2,7 @@ package com.kuraflow.auth.controller;
 
 import com.kuraflow.auth.dto.AuthResponse;
 import com.kuraflow.auth.dto.LoginRequest;
+import com.kuraflow.auth.dto.RefreshTokenRequest;
 import com.kuraflow.auth.dto.RegisterRequest;
 import com.kuraflow.auth.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -38,8 +39,15 @@ public class AuthController {
     }
 
     @PostMapping("/refresh")
-    @Operation(summary = "Refresh access token using a refresh token")
-    public ResponseEntity<AuthResponse> refresh(@Valid @RequestBody com.kuraflow.auth.dto.RefreshTokenRequest request) {
+    @Operation(summary = "Exchange a refresh token for new access and refresh tokens (the old refresh token stops working)")
+    public ResponseEntity<AuthResponse> refresh(@Valid @RequestBody RefreshTokenRequest request) {
         return ResponseEntity.ok(authService.refresh(request.getRefreshToken()));
+    }
+
+    @PostMapping("/logout")
+    @Operation(summary = "Revoke the session behind a refresh token")
+    public ResponseEntity<Void> logout(@Valid @RequestBody RefreshTokenRequest request) {
+        authService.logout(request.getRefreshToken());
+        return ResponseEntity.noContent().build();
     }
 }

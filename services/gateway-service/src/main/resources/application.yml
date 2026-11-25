@@ -56,4 +56,4 @@ spring:
       port: ${REDIS_PORT:6379}
 
 jwt:
-  secret: ${JWT_SECRET:defaultSecretKeyForDevelopmentShouldBe32CharsLong!}
+  secret: ${JWT_SECRET:}

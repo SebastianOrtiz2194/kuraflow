@@ -1,11 +1,13 @@
 package com.kuraflow.user.service;
 
+import com.kuraflow.user.dto.PublicUserProfileResponse;
 import com.kuraflow.user.dto.UpdateProfileRequest;
 import com.kuraflow.user.dto.UserBriefResponse;
 import com.kuraflow.user.dto.UserProfileResponse;
 import com.kuraflow.user.entity.User;
 import com.kuraflow.user.entity.UserFollow;
 import com.kuraflow.user.entity.UserFollowId;
+import com.kuraflow.user.exception.UserNotFoundException;
 import com.kuraflow.user.repository.UserFollowRepository;
 import com.kuraflow.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 
@@ -25,25 +28,37 @@ public class UserService {
     private final UserRepository userRepository;
     private final UserFollowRepository userFollowRepository;
 
-    public UserProfileResponse getProfile(UUID userId) {
+    /** The caller's own profile. Provisions the row from the token's email if it's missing. */
+    @Transactional
+    public UserProfileResponse getOwnProfile(UUID userId, String email) {
         User user = userRepository.findById(userId)
-                .orElseGet(() -> autoProvisionUser(userId, null, null));
+                .orElseGet(() -> autoProvisionUser(userId, email, null));
         return toResponse(user);
     }
 
-    public UserProfileResponse getProfileByEmail(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("User not found: " + email));
-        return toResponse(user);
+    /** Another user's profile as anyone may see it. Never creates rows. */
+    @Transactional(readOnly = true)
+    public PublicUserProfileResponse getPublicProfile(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException(userId));
+        return new PublicUserProfileResponse(
+                user.getId(),
+                user.getDisplayName(),
+                user.getAvatarUrl(),
+                user.getPreferredLanguageId(),
+                user.getCurrentLevelId(),
+                user.getCreatedAt(),
+                userFollowRepository.countByFollowedId(userId),
+                userFollowRepository.countByFollowerId(userId));
     }
 
     @Transactional
-    public UserProfileResponse updateProfile(UUID userId, UpdateProfileRequest request) {
+    public UserProfileResponse updateProfile(UUID userId, String email, UpdateProfileRequest request) {
         User user = userRepository.findById(userId)
-                .orElseGet(() -> autoProvisionUser(userId, null, null));
+                .orElseGet(() -> autoProvisionUser(userId, email, null));
 
         if (request.getDisplayName() != null) {
-            user.setDisplayName(request.getDisplayName());
+            user.setDisplayName(request.getDisplayName().trim());
         }
         if (request.getAvatarUrl() != null) {
             user.setAvatarUrl(request.getAvatarUrl());
@@ -55,10 +70,17 @@ public class UserService {
             user.setCurrentLevelId(request.getCurrentLevelId());
         }
         if (request.getTimezone() != null) {
-            user.setTimezone(request.getTimezone());
+            user.setTimezone(requireKnownTimezone(request.getTimezone()));
         }
 
         return toResponse(userRepository.save(user));
+    }
+
+    private static String requireKnownTimezone(String timezone) {
+        if (!ZoneId.getAvailableZoneIds().contains(timezone)) {
+            throw new IllegalArgumentException("Unknown timezone: " + timezone + " (use an IANA zone such as Asia/Tokyo)");
+        }
+        return timezone;
     }
 
     public List<UserBriefResponse> searchUsers(String query) {
@@ -80,6 +102,9 @@ public class UserService {
     public void followUser(UUID followerId, UUID followedId) {
         if (followerId.equals(followedId)) {
             throw new IllegalArgumentException("Cannot follow yourself");
+        }
+        if (!userRepository.existsById(followedId)) {
+            throw new UserNotFoundException(followedId);
         }
         UserFollowId id = new UserFollowId(followerId, followedId);
         if (!userFollowRepository.existsById(id)) {
