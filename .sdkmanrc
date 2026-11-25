@@ -1,0 +1,3 @@
+# JDK for the backend build (services/). The Maven enforcer rejects other versions.
+# Run `sdk env` here, or set `sdkman_auto_env=true` in ~/.sdkman/etc/config.
+java=21.0.12+1.1-tem

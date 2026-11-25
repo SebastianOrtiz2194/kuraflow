@@ -76,5 +76,33 @@
                 </plugin>
             </plugins>
         </pluginManagement>
+        <plugins>
+            <!-- Fail fast on the wrong toolchain. JDK 25 compiles this project into
+                 errors that look like broken code (Lombok annotations are not applied). -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>enforce-toolchain</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireJavaVersion>
+                                    <version>[21,22)</version>
+                                    <message>KuraFlow builds with JDK 21 (see .sdkmanrc). Run `sdk env` in the repository root, or point JAVA_HOME at a JDK 21.</message>
+                                </requireJavaVersion>
+                                <requireMavenVersion>
+                                    <version>[3.9,)</version>
+                                    <message>Use the Maven Wrapper: ./mvnw (from services/) or ../mvnw (from a module).</message>
+                                </requireMavenVersion>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
     </build>
 </project>
