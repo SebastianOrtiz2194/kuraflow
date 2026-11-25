@@ -1,0 +1,2 @@
+org.springframework.boot.diagnostics.FailureAnalyzer=\
+com.kuraflow.shared.security.InvalidJwtSecretFailureAnalyzer
