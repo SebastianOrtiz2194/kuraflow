@@ -35,8 +35,11 @@ server:
   port: 8081
 
 jwt:
-  secret: ${JWT_SECRET:defaultSecretKeyForDevelopmentShouldBe32CharsLong!}
+  secret: ${JWT_SECRET:}
+  # Access-token lifetime in seconds.
   expiration: 3600
+  # Refresh-token lifetime in seconds; each refresh rotates the token and slides the session.
+  refreshExpiration: 604800
 
 app:
   kafka:
