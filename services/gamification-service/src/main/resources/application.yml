@@ -24,7 +24,8 @@ spring:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
-        spring.json.trusted.packages: "*"
+        # Only deserialize our own event classes (a wildcard lets a producer pick any class on the classpath).
+        spring.json.trusted.packages: "com.kuraflow.shared.event,com.kuraflow.shared.events"
         spring.json.type.mapping: lessonCompleted:com.kuraflow.shared.events.LessonCompletedEvent,reviewCompleted:com.kuraflow.shared.events.ReviewCompletedEvent
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
@@ -54,7 +55,7 @@ app:
     base-url: "http://localhost:8082"
 
 jwt:
-  secret: ${JWT_SECRET:defaultSecretKeyForDevelopmentShouldBe32CharsLong!}
+  secret: ${JWT_SECRET:}
 
 springdoc:
   api-docs:
