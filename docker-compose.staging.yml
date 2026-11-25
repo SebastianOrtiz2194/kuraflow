@@ -1,19 +1,32 @@
-version: '3.8'
+# Staging stack: infrastructure, all services and the frontend.
+# Needs a .env next to this file with JWT_SECRET and DB_PASSWORD (see .env.example).
+#
+# Only the frontend (3000) and the API gateway (8080) are published. Services talk over the compose
+# network, so nobody can bypass the gateway's token check and rate limits. Postgres, Redis and
+# Kafka are bound to 127.0.0.1 for debugging from this machine only.
+
+x-database-env: &database-env
+  SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/KuraFlow
+  SPRING_DATASOURCE_USERNAME: ${DB_USERNAME:-KuraFlow}
+  SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+
+x-jwt-env: &jwt-env
+  JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env - at least 32 bytes, e.g. openssl rand -base64 48}
 
 services:
   postgres:
     image: postgres:16-alpine
     container_name: KuraFlow-staging-postgres
     environment:
-      POSTGRES_USER: KuraFlow
-      POSTGRES_PASSWORD: password
+      POSTGRES_USER: ${DB_USERNAME:-KuraFlow}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
       POSTGRES_DB: KuraFlow
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres-staging-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U KuraFlow"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-KuraFlow}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -22,7 +35,7 @@ services:
     image: redis:7-alpine
     container_name: KuraFlow-staging-redis
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis-staging-data:/data
     healthcheck:
@@ -44,7 +57,7 @@ services:
     depends_on:
       - zookeeper
     ports:
-      - "9092:9092"
+      - "127.0.0.1:9092:9092"
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
@@ -65,14 +78,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    ports:
-      - "8081:8081"
+      kafka:
+        condition: service_healthy
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/KuraFlow
-      SPRING_DATASOURCE_USERNAME: KuraFlow
-      SPRING_DATASOURCE_PASSWORD: password
+      <<: [*database-env, *jwt-env]
       SPRING_DATA_REDIS_HOST: redis
-      JWT_SECRET: ${JWT_SECRET:-defaultSecretKeyForDevelopmentShouldBe32CharsLong!}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
 
   user-service:
     build: ./services/user-service
@@ -82,14 +93,9 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
-    ports:
-      - "8082:8082"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/KuraFlow
-      SPRING_DATASOURCE_USERNAME: KuraFlow
-      SPRING_DATASOURCE_PASSWORD: password
-      SPRING_KAFKA_CONSUMER_BOOTSTRAP_SERVERS: kafka:29092
-      JWT_SECRET: ${JWT_SECRET:-defaultSecretKeyForDevelopmentShouldBe32CharsLong!}
+      <<: [*database-env, *jwt-env]
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       MAIL_PASSWORD: ${MAIL_PASSWORD:-password}
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
@@ -103,12 +109,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    ports:
-      - "8083:8083"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/KuraFlow
-      SPRING_DATASOURCE_USERNAME: KuraFlow
-      SPRING_DATASOURCE_PASSWORD: password
+      <<: [*database-env, *jwt-env]
       SPRING_DATA_REDIS_HOST: redis
 
   progress-service:
@@ -119,14 +121,9 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
-    ports:
-      - "8084:8084"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/KuraFlow
-      SPRING_DATASOURCE_USERNAME: KuraFlow
-      SPRING_DATASOURCE_PASSWORD: password
+      <<: [*database-env, *jwt-env]
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-      JWT_SECRET: ${JWT_SECRET:-defaultSecretKeyForDevelopmentShouldBe32CharsLong!}
 
   gamification-service:
     build: ./services/gamification-service
@@ -138,16 +135,11 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
-    ports:
-      - "8085:8085"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/KuraFlow
-      SPRING_DATASOURCE_USERNAME: KuraFlow
-      SPRING_DATASOURCE_PASSWORD: password
+      <<: [*database-env, *jwt-env]
       SPRING_DATA_REDIS_HOST: redis
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       APP_USER_SERVICE_BASE_URL: http://user-service:8082
-      JWT_SECRET: ${JWT_SECRET:-defaultSecretKeyForDevelopmentShouldBe32CharsLong!}
 
   gateway-service:
     build: ./services/gateway-service
@@ -161,9 +153,9 @@ services:
     ports:
       - "8080:8080"
     environment:
+      <<: *jwt-env
       SPRING_PROFILES_ACTIVE: staging
       SPRING_DATA_REDIS_HOST: redis
-      JWT_SECRET: ${JWT_SECRET:-defaultSecretKeyForDevelopmentShouldBe32CharsLong!}
 
   frontend:
     build: ./frontend
